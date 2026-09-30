@@ -22,6 +22,9 @@ export default defineConfig({
 				baseUrl: 'https://github.com/articulate-orm/articulate-orm.github.io/edit/main/',
 			},
 			customCss: ['./src/styles/custom.css'],
+			components: {
+				Hero: './src/components/Hero.astro',
+			},
 			plugins: [
 				starlightVersions({
 					versions: [{ slug: '1.0', label: 'v1.0' }],
