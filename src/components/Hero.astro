@@ -1,0 +1,398 @@
+---
+import { Image } from 'astro:assets';
+
+const { data } = Astro.locals.starlightRoute.entry;
+const { title = data.title, tagline, image, actions = [] } = data.hero || {};
+
+const imageAttrs = {
+	loading: 'eager' as const,
+	decoding: 'async' as const,
+	width: 400,
+	height: 400,
+	alt: image?.alt || '',
+};
+
+let darkImage: ImageMetadata | undefined;
+let lightImage: ImageMetadata | undefined;
+let rawHtml: string | undefined;
+if (image) {
+	if ('file' in image) {
+		darkImage = image.file;
+	} else if ('dark' in image) {
+		darkImage = image.dark;
+		lightImage = image.light;
+	} else {
+		rawHtml = image.html;
+	}
+}
+
+// Split "Articulate" into Art / iculate for the scroll-driven slice-cut animation.
+// Falls back to the plain title on any other page that happens to set a hero.
+const isArticulateTitle = title === 'Articulate';
+const slices = isArticulateTitle ? ['Art', 'iculate'] : null;
+---
+
+<div class="hero">
+	{
+		darkImage && (
+			<Image
+				src={darkImage}
+				{...imageAttrs}
+				class:list={{ 'light:sl-hidden': Boolean(lightImage) }}
+			/>
+		)
+	}
+	{lightImage && <Image src={lightImage} {...imageAttrs} class="dark:sl-hidden" />}
+	{rawHtml && <div class="hero-html sl-flex" set:html={rawHtml} />}
+	<div class="sl-flex stack">
+		<div class="sl-flex copy">
+			{
+				slices ? (
+					<h1 id="_top" data-page-title class="slice-title" aria-label={title}>
+						<span class="slice slice-1" aria-hidden="true">{slices[0]}<span class="cut-blade" aria-hidden="true"><span class="blade-glint" aria-hidden="true"></span></span><span class="cut-spark" aria-hidden="true"></span></span><span class="slice slice-2" aria-hidden="true">{slices[1]}</span>
+					</h1>
+				) : (
+					<h1 id="_top" data-page-title set:html={title} />
+				)
+			}
+			{tagline && <div class="tagline" set:html={tagline} />}
+		</div>
+		{
+			actions.length > 0 && (
+				<div class="sl-flex actions">
+					{actions.map(
+						({ attrs: { class: className, ...attrs } = {}, icon, link: href, text, variant }) => (
+							<a
+								href={href}
+								class:list={['sl-flex action', `${variant ?? 'primary'}`, className]}
+								{...attrs}
+							>
+								{text}
+								{icon?.html && <Fragment set:html={icon.html} />}
+							</a>
+						)
+					)}
+				</div>
+			)
+		}
+	</div>
+</div>
+
+<script>
+	const title = document.querySelector('.slice-title');
+	const blade = title?.querySelector('.cut-blade');
+	const spark = title?.querySelector('.cut-spark');
+	const s2 = title?.querySelector('.slice-2');
+	const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+	if (title && blade && spark && s2) {
+		if (reduceMotion) {
+			// Skip straight to the end state: no sweep, no spark, iculate already settled below-left.
+			title.classList.add('is-cut');
+		} else {
+			// Fire once on load, after the entrance transition has a beat to settle.
+			requestAnimationFrame(() => {
+				setTimeout(() => {
+					// The blade sweeps top-to-bottom, with a specular glint riding
+					// along its edge (a real blade highlight travels with the
+					// reveal, it doesn't flash everywhere at once). The spark
+					// catches at the bottom edge, then iculate settles into place.
+					blade.classList.add('flash');
+                    spark.classList.add('flare');
+					setTimeout(() => {
+						title.classList.add('is-cut');
+					}, 540);
+				}, 300);
+			});
+		}
+	}
+
+	// Subtle hue drift on 'Art' as the page scrolls — independent of the
+	// load-triggered cut, keeps the slice concept alive past the fold.
+	if (title) {
+		const HUE_RANGE = 300; // px of scroll over which the shift completes
+		let ticking = false;
+		const updateHue = () => {
+			ticking = false;
+			const progress = Math.min(1, Math.max(0, window.scrollY / HUE_RANGE));
+			title.style.setProperty('--s1-hue-shift', String(progress * 40));
+		};
+		const onScroll = () => {
+			if (!ticking) {
+				ticking = true;
+				requestAnimationFrame(updateHue);
+			}
+		};
+		updateHue();
+		window.addEventListener('scroll', onScroll, { passive: true });
+	}
+</script>
+
+<style>
+	@layer starlight.core {
+		.hero {
+			display: grid;
+			grid-template-columns: 100%;
+			align-items: center;
+			gap: 1rem;
+			padding-bottom: 1rem;
+		}
+
+		.hero > img,
+		.hero > .hero-html {
+			object-fit: contain;
+			width: min(70%, 20rem);
+			height: auto;
+			margin-inline: auto;
+		}
+
+		.stack {
+			flex-direction: column;
+			gap: clamp(1.5rem, calc(1.5rem + 1vw), 2rem);
+			text-align: center;
+		}
+
+		.copy {
+			flex-direction: column;
+			gap: 1rem;
+			align-items: center;
+		}
+
+		.copy > * {
+			max-width: 50ch;
+		}
+
+		h1 {
+			font-size: clamp(var(--sl-text-3xl), calc(0.25rem + 5vw), var(--sl-text-6xl));
+			line-height: var(--sl-line-height-headings);
+			font-weight: 600;
+			color: var(--sl-color-white);
+		}
+
+		.slice-title {
+			display: inline-flex;
+			align-items: baseline;
+			white-space: nowrap;
+			position: relative;
+		}
+
+		.slice {
+			display: inline-block;
+			position: relative;
+		}
+
+		/* Chromium sometimes fails to repaint gradient/background-clip:text
+		   content on a transformed child until something forces a new
+		   composite layer — the layout box moves (DevTools shows it) but the
+		   painted glyphs visually lag behind. Force its own layer up front. */
+		.slice-2 {
+			will-change: transform;
+			backface-visibility: hidden;
+			transform: translate3d(0, 0, 0);
+		}
+
+		.cut-blade {
+			position: absolute;
+			top: -14%;
+			bottom: -14%;
+			right: -0.03em;
+			width: 0.06em;
+			border-radius: 999rem;
+			/* Cold steel: layered blue-grey stops with a bright core streak,
+			   instead of a flat white line. */
+			background: linear-gradient(
+				180deg,
+				transparent,
+				#274873 8%,
+				#7fb2e8 32%,
+				#eaf4ff 48%,
+				#7fb2e8 64%,
+				#1c3a5e 88%,
+				transparent
+			);
+			opacity: 0;
+			pointer-events: none;
+			transform: rotate(10deg);
+			transform-origin: center;
+			/* Wipes upward: fully clipped (invisible) at the bottom edge,
+			   growing to fully revealed — a sweep, not a simultaneous flash. */
+			clip-path: inset(0 0 100% 0);
+		}
+
+		.cut-blade.flash {
+			animation: blade-sweep 0.12s cubic-bezier(0.65, 0, 0.35, 1) forwards;
+		}
+
+		@keyframes blade-sweep {
+			0% {
+				opacity: 0;
+				clip-path: inset(0 0 100% 0);
+			}
+			8% {
+				opacity: 1;
+			}
+			70% {
+				opacity: 1;
+				clip-path: inset(0 0 0% 0);
+				box-shadow: 0 0 10px 2px rgba(127, 178, 232, 0.75), 0 0 20px 5px rgba(39, 72, 115, 0.5);
+			}
+			100% {
+				opacity: 0;
+				clip-path: inset(0 0 0% 0);
+				box-shadow: none;
+			}
+		}
+
+		/* Honest specular highlight: light doesn't flash along the whole
+		   blade at once, it rides the leading edge as the reveal travels.
+		   Clipped by .cut-blade's own clip-path, so it's only ever visible
+		   within the already-revealed portion — a bright point tracking
+		   where the edge currently is, not a static glow. */
+		.blade-glint {
+			position: absolute;
+			left: 50%;
+			top: 0%;
+			width: 260%;
+			height: 14%;
+			transform: translate(-50%, -50%);
+			border-radius: 999rem;
+			background: radial-gradient(ellipse, #ffffff 0%, rgba(234, 244, 255, 0.85) 40%, transparent 78%);
+			opacity: 0;
+			filter: blur(0.5px);
+		}
+
+		.cut-blade.flash .blade-glint {
+			animation: glint-travel 0.42s cubic-bezier(0.65, 0, 0.35, 1) forwards;
+		}
+
+		@keyframes glint-travel {
+			0% {
+				top: 0%;
+				opacity: 0;
+			}
+			8% {
+				opacity: 1;
+			}
+			70% {
+				top: 100%;
+				opacity: 1;
+			}
+			100% {
+				top: 100%;
+				opacity: 0;
+			}
+		}
+
+		/* A tiny bright spark at the top edge, right as the blade sweep
+		   arrives — four short rays fanned ~40deg off-axis, not a big
+		   radiating sunburst. */
+		.cut-spark {
+			position: absolute;
+			bottom: -14%;
+			right: -0.03em;
+			width: 0.9em;
+			height: 0.9em;
+			transform: translate(50%, -50%) rotate(40deg) scale(0);
+			pointer-events: none;
+			opacity: 0;
+			background:
+				radial-gradient(circle, #ffffff 0%, #d9ecff 22%, transparent 60%),
+				linear-gradient(90deg, transparent 40%, #eaf4ff 47%, #ffffff 50%, #eaf4ff 53%, transparent 60%),
+				linear-gradient(0deg, transparent 40%, #eaf4ff 47%, #ffffff 50%, #eaf4ff 53%, transparent 60%);
+			filter: drop-shadow(0 0 4px rgba(127, 178, 232, 0.9));
+		}
+
+		.cut-spark.flare {
+			animation: spark-flare 0.35s ease-out forwards;
+		}
+
+		@keyframes spark-flare {
+			0% {
+				opacity: 0;
+				transform: translate(50%, -50%) rotate(40deg) scale(0.3);
+			}
+			45% {
+				opacity: 1;
+				transform: translate(50%, -50%) rotate(40deg) scale(1);
+			}
+			100% {
+				opacity: 0;
+				transform: translate(50%, -50%) rotate(40deg) scale(1.3);
+			}
+		}
+
+		.slice-2 {
+			transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.15s;
+		}
+
+		.slice-title.is-cut .slice-2 {
+			transform: translate3d(-0.05em, 0.19em, 0);
+		}
+
+		.tagline {
+			font-size: clamp(var(--sl-text-base), calc(0.0625rem + 2vw), var(--sl-text-xl));
+			color: var(--sl-color-gray-2);
+		}
+
+		.actions {
+			gap: 1rem 2rem;
+			flex-wrap: wrap;
+			justify-content: center;
+		}
+
+		.action {
+			align-items: center;
+			gap: 0.5rem;
+			padding: 0.375rem 1rem;
+			border-radius: 999rem;
+			font-weight: 600;
+			text-decoration: none;
+			border: 1px solid transparent;
+		}
+
+		.action.primary {
+			background-color: #0f172a;
+			color: #ffffff;
+		}
+
+		:root[data-theme='dark'] .action.primary {
+			background-color: #05070d;
+			color: #ffffff;
+		}
+
+		.action.secondary {
+			border-color: var(--sl-color-gray-5);
+			color: var(--sl-color-white);
+		}
+
+		.action.minimal {
+			color: var(--sl-color-gray-2);
+		}
+
+		@media (min-width: 50rem) {
+			.hero {
+				grid-template-columns: 7fr 4fr;
+				gap: 3%;
+				padding-block: clamp(2.5rem, calc(1rem + 10vmin), 10rem);
+			}
+
+			.hero > img,
+			.hero > .hero-html {
+				order: 2;
+				width: min(100%, 25rem);
+			}
+
+			.stack {
+				text-align: start;
+			}
+
+			.copy {
+				align-items: flex-start;
+			}
+
+			.actions {
+				justify-content: flex-start;
+			}
+		}
+	}
+</style>
