@@ -98,9 +98,7 @@ const slices = isArticulateTitle ? ['Art', 'iculate'] : null;
 					// reveal, it doesn't flash everywhere at once). The spark
 					// catches at the bottom edge, then iculate settles into place.
 					blade.classList.add('flash');
-					setTimeout(() => {
-						spark.classList.add('flare');
-					}, 120);
+                    spark.classList.add('flare');
 					setTimeout(() => {
 						title.classList.add('is-cut');
 					}, 540);
