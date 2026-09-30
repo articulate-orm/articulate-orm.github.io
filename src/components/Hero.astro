@@ -79,37 +79,47 @@ const slices = isArticulateTitle ? ['Art', 'iculate'] : null;
 </div>
 
 <script>
+	const hero = document.querySelector('.hero');
 	const title = document.querySelector('.slice-title');
 	const s2 = title?.querySelector('.slice-2');
 	const blade = title?.querySelector('.cut-blade');
 	const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-	if (title && s2 && blade && !reduceMotion) {
-		const CUT_AT = 60; // px of scroll before the blade fires
-		const FADE_RANGE = 260; // px of scroll over which iculate drifts + fades after the cut
+	if (hero && title && s2 && blade && !reduceMotion) {
+		const CUT_AT = 4; // px the hero must have scrolled past its top before the blade fires
+		const FADE_RANGE = 90; // px of further scroll over which iculate drifts + fades
+		const SETTLE_DELAY = 380; // ms the blade stays visible after firing, regardless of scroll speed
 		let hasCut = false;
 		let ticking = false;
+		let settleTimer: ReturnType<typeof setTimeout> | undefined;
 
 		const update = () => {
 			ticking = false;
-			const y = window.scrollY;
+			// Distance the hero itself has scrolled past the top of the viewport —
+			// independent of absolute page scroll position, so this always plays
+			// as the hero leaves view no matter where it sits on the page.
+			const scrolledPastHero = Math.max(0, -hero.getBoundingClientRect().top);
 
-			if (y >= CUT_AT && !hasCut) {
+			if (scrolledPastHero >= CUT_AT && !hasCut) {
 				hasCut = true;
 				title.classList.add('is-cut');
-				blade.classList.remove('flash');
-				// restart the flash keyframe every time it (re)fires
-				void blade.offsetWidth;
+				blade.classList.remove('flash', 'settled');
+				void blade.offsetWidth; // restart the flash keyframe every time it (re)fires
 				blade.classList.add('flash');
-			} else if (y < CUT_AT && hasCut) {
+				clearTimeout(settleTimer);
+				settleTimer = setTimeout(() => blade.classList.add('settled'), SETTLE_DELAY);
+			} else if (scrolledPastHero < CUT_AT && hasCut) {
 				hasCut = false;
+				clearTimeout(settleTimer);
 				title.classList.remove('is-cut');
-				blade.classList.remove('flash');
+				blade.classList.remove('flash', 'settled');
+				s2.style.transform = '';
+				s2.style.opacity = '';
 			}
 
 			if (hasCut) {
-				const progress = Math.min(1, Math.max(0, (y - CUT_AT) / FADE_RANGE));
-				s2.style.transform = `translateX(${progress * 90}px)`;
+				const progress = Math.min(1, Math.max(0, (scrolledPastHero - CUT_AT) / FADE_RANGE));
+				s2.style.transform = `translateX(${progress * 70}px)`;
 				s2.style.opacity = String(1 - progress);
 			}
 		};
@@ -123,6 +133,7 @@ const slices = isArticulateTitle ? ['Art', 'iculate'] : null;
 
 		update();
 		window.addEventListener('scroll', onScroll, { passive: true });
+		window.addEventListener('resize', update);
 	}
 </script>
 
@@ -187,22 +198,25 @@ const slices = isArticulateTitle ? ['Art', 'iculate'] : null;
 			display: inline-block;
 			width: 0;
 			align-self: stretch;
-			margin-inline: 0.02em;
+			margin-inline: 0;
 			border-radius: 999rem;
 			background: linear-gradient(180deg, transparent, var(--sl-color-white), transparent);
 			opacity: 0;
 			transform: scaleY(0);
 			transform-origin: center;
-		}
-
-		.slice-title.is-cut .cut-blade {
-			width: 0.09em;
-			opacity: 1;
-			transform: scaleY(1);
+			transition: opacity 0.4s ease 0.15s, width 0.4s ease 0.15s, margin-inline 0.4s ease 0.15s;
 		}
 
 		.cut-blade.flash {
-			animation: blade-flash 0.35s ease-out;
+			animation: blade-flash 0.3s ease-out forwards;
+		}
+
+		/* Once the cut has visibly registered and iculate starts drifting away,
+		   the blade itself fades out — a slice leaves no visible seam behind. */
+		.cut-blade.settled {
+			width: 0 !important;
+			opacity: 0 !important;
+			margin-inline: 0 !important;
 		}
 
 		@keyframes blade-flash {
@@ -212,17 +226,17 @@ const slices = isArticulateTitle ? ['Art', 'iculate'] : null;
 				transform: scaleY(0.2);
 				box-shadow: none;
 			}
-			35% {
-				width: 0.16em;
+			40% {
+				width: 0.05em;
 				opacity: 1;
-				transform: scaleY(1.15);
-				box-shadow: 0 0 18px 3px var(--sl-color-white), 0 0 34px 8px var(--sl-color-accent);
+				transform: scaleY(1.1);
+				box-shadow: 0 0 14px 2px var(--sl-color-white), 0 0 26px 6px var(--sl-color-accent);
 			}
 			100% {
-				width: 0.09em;
+				width: 0.035em;
 				opacity: 1;
 				transform: scaleY(1);
-				box-shadow: 0 0 6px 1px var(--sl-color-accent);
+				box-shadow: 0 0 4px 1px var(--sl-color-accent);
 			}
 		}
 
