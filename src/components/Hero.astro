@@ -102,18 +102,9 @@ const slices = isArticulateTitle ? ['Art', 'iculate'] : null;
 				}, 540);
 			};
 
-			// Hero sits at the top of the page, so it's already in view on
-			// load — wait for an actual scroll gesture (not just visibility)
-			// before playing the cut, so it reads as scroll-triggered rather
-			// than an autoplay-on-load effect.
-			let armed = false;
-			const onFirstScroll = () => {
-				if (armed) return;
-				armed = true;
-				window.removeEventListener('scroll', onFirstScroll);
-				playCut();
-			};
-			window.addEventListener('scroll', onFirstScroll, { passive: true });
+			// Fire 1.5s after the page opens, giving the reader a beat to
+			// land before the cut plays.
+			setTimeout(playCut, 1500);
 		}
 	}
 
