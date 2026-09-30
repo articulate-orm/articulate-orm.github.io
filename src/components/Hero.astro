@@ -90,20 +90,21 @@ const slices = isArticulateTitle ? ['Art', 'iculate'] : null;
 			// Skip straight to the end state: no sweep, no spark, iculate already settled below-left.
 			title.classList.add('is-cut');
 		} else {
-			// Fire once on load, after the entrance transition has a beat to settle.
-			requestAnimationFrame(() => {
+			const playCut = () => {
+				// The blade sweeps top-to-bottom, with a specular glint riding
+				// along its edge (a real blade highlight travels with the
+				// reveal, it doesn't flash everywhere at once). The spark
+				// catches at the bottom edge, then iculate settles into place.
+				blade.classList.add('flash');
+				spark.classList.add('flare');
 				setTimeout(() => {
-					// The blade sweeps top-to-bottom, with a specular glint riding
-					// along its edge (a real blade highlight travels with the
-					// reveal, it doesn't flash everywhere at once). The spark
-					// catches at the bottom edge, then iculate settles into place.
-					blade.classList.add('flash');
-                    spark.classList.add('flare');
-					setTimeout(() => {
-						title.classList.add('is-cut');
-					}, 540);
-				}, 300);
-			});
+					title.classList.add('is-cut');
+				}, 540);
+			};
+
+			// Fire 1.5s after the page opens, giving the reader a beat to
+			// land before the cut plays.
+			setTimeout(playCut, 1500);
 		}
 	}
 
