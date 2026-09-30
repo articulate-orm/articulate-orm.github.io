@@ -33,6 +33,19 @@
 	color: transparent;
 }
 
+/* 'Art' gets its own gradient, nudged in hue as the page scrolls
+   (subtle — driven by --s1-hue-shift, set inline by the hero script). */
+.hero h1.slice-title .slice-1 {
+	background: linear-gradient(
+		120deg,
+		hsl(calc(220 + var(--s1-hue-shift, 0)), 70%, 30%),
+		hsl(calc(220 + var(--s1-hue-shift, 0)), 78%, 56%)
+	);
+	-webkit-background-clip: text;
+	background-clip: text;
+	color: transparent;
+}
+
 :root[data-theme='dark'] .hero h1:not(.slice-title) {
 	background: linear-gradient(120deg, #dbe6ff, #7aa2f7);
 	-webkit-background-clip: text;
@@ -42,6 +55,17 @@
 
 :root[data-theme='dark'] .hero h1.slice-title .slice {
 	background: linear-gradient(120deg, #dbe6ff, #7aa2f7);
+	-webkit-background-clip: text;
+	background-clip: text;
+	color: transparent;
+}
+
+:root[data-theme='dark'] .hero h1.slice-title .slice-1 {
+	background: linear-gradient(
+		120deg,
+		hsl(calc(210 + var(--s1-hue-shift, 0)), 90%, 82%),
+		hsl(calc(210 + var(--s1-hue-shift, 0)), 85%, 65%)
+	);
 	-webkit-background-clip: text;
 	background-clip: text;
 	color: transparent;
