@@ -26,10 +26,10 @@ if (image) {
 	}
 }
 
-// Split "Articulate" into its slices for the scroll-driven title animation.
+// Split "Articulate" into Art / iculate for the scroll-driven slice-cut animation.
 // Falls back to the plain title on any other page that happens to set a hero.
 const isArticulateTitle = title === 'Articulate';
-const slices = isArticulateTitle ? ['Art', 'icul', 'ate'] : null;
+const slices = isArticulateTitle ? ['Art', 'iculate'] : null;
 ---
 
 <div class="hero">
@@ -49,7 +49,7 @@ const slices = isArticulateTitle ? ['Art', 'icul', 'ate'] : null;
 			{
 				slices ? (
 					<h1 id="_top" data-page-title class="slice-title" aria-label={title}>
-						<span class="slice slice-1" aria-hidden="true">{slices[0]}</span><span class="slice slice-2" aria-hidden="true">{slices[1]}</span><span class="slice slice-3" aria-hidden="true">{slices[2]}</span>
+						<span class="slice slice-1" aria-hidden="true">{slices[0]}</span><span class="cut-blade" aria-hidden="true"></span><span class="slice slice-2" aria-hidden="true">{slices[1]}</span>
 					</h1>
 				) : (
 					<h1 id="_top" data-page-title set:html={title} />
@@ -80,28 +80,47 @@ const slices = isArticulateTitle ? ['Art', 'icul', 'ate'] : null;
 
 <script>
 	const title = document.querySelector('.slice-title');
-	const s1 = title?.querySelector('.slice-1');
 	const s2 = title?.querySelector('.slice-2');
-	const s3 = title?.querySelector('.slice-3');
+	const blade = title?.querySelector('.cut-blade');
 	const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-	if (title && s1 && s2 && s3 && !reduceMotion) {
+	if (title && s2 && blade && !reduceMotion) {
+		const CUT_AT = 60; // px of scroll before the blade fires
+		const FADE_RANGE = 260; // px of scroll over which iculate drifts + fades after the cut
+		let hasCut = false;
 		let ticking = false;
+
 		const update = () => {
 			ticking = false;
-			const progress = Math.min(1, Math.max(0, window.scrollY / 420));
-			s2.style.transform = `translateX(${progress * 28}px)`;
-			s3.style.transform = `translateX(${progress * 72}px)`;
-			const hue = 220 + progress * 60;
-			s1.style.color = `hsl(${hue}, 85%, ${65 - progress * 10}%)`;
-			title.style.setProperty('--slice-gap', `${progress * 0.35}em`);
+			const y = window.scrollY;
+
+			if (y >= CUT_AT && !hasCut) {
+				hasCut = true;
+				title.classList.add('is-cut');
+				blade.classList.remove('flash');
+				// restart the flash keyframe every time it (re)fires
+				void blade.offsetWidth;
+				blade.classList.add('flash');
+			} else if (y < CUT_AT && hasCut) {
+				hasCut = false;
+				title.classList.remove('is-cut');
+				blade.classList.remove('flash');
+			}
+
+			if (hasCut) {
+				const progress = Math.min(1, Math.max(0, (y - CUT_AT) / FADE_RANGE));
+				s2.style.transform = `translateX(${progress * 90}px)`;
+				s2.style.opacity = String(1 - progress);
+			}
 		};
+
 		const onScroll = () => {
 			if (!ticking) {
 				ticking = true;
 				requestAnimationFrame(update);
 			}
 		};
+
 		update();
 		window.addEventListener('scroll', onScroll, { passive: true });
 	}
@@ -150,18 +169,61 @@ const slices = isArticulateTitle ? ['Art', 'icul', 'ate'] : null;
 
 		.slice-title {
 			display: inline-flex;
-			gap: var(--slice-gap, 0em);
+			align-items: baseline;
 			white-space: nowrap;
+			position: relative;
 		}
 
 		.slice {
 			display: inline-block;
-			will-change: transform;
-			transition: transform 0.05s linear;
+			will-change: transform, opacity;
 		}
 
-		.slice-1 {
-			transition: color 0.05s linear;
+		.slice-2 {
+			transition: transform 0.05s linear, opacity 0.05s linear;
+		}
+
+		.cut-blade {
+			display: inline-block;
+			width: 0;
+			align-self: stretch;
+			margin-inline: 0.02em;
+			border-radius: 999rem;
+			background: linear-gradient(180deg, transparent, var(--sl-color-white), transparent);
+			opacity: 0;
+			transform: scaleY(0);
+			transform-origin: center;
+		}
+
+		.slice-title.is-cut .cut-blade {
+			width: 0.09em;
+			opacity: 1;
+			transform: scaleY(1);
+		}
+
+		.cut-blade.flash {
+			animation: blade-flash 0.35s ease-out;
+		}
+
+		@keyframes blade-flash {
+			0% {
+				width: 0;
+				opacity: 0;
+				transform: scaleY(0.2);
+				box-shadow: none;
+			}
+			35% {
+				width: 0.16em;
+				opacity: 1;
+				transform: scaleY(1.15);
+				box-shadow: 0 0 18px 3px var(--sl-color-white), 0 0 34px 8px var(--sl-color-accent);
+			}
+			100% {
+				width: 0.09em;
+				opacity: 1;
+				transform: scaleY(1);
+				box-shadow: 0 0 6px 1px var(--sl-color-accent);
+			}
 		}
 
 		.tagline {
