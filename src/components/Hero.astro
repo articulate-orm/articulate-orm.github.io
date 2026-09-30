@@ -49,7 +49,7 @@ const slices = isArticulateTitle ? ['Art', 'iculate'] : null;
 			{
 				slices ? (
 					<h1 id="_top" data-page-title class="slice-title" aria-label={title}>
-						<span class="slice slice-1" aria-hidden="true">{slices[0]}<span class="cut-blade" aria-hidden="true"></span></span><span class="slice slice-2" aria-hidden="true">{slices[1]}</span>
+						<span class="slice slice-1" aria-hidden="true">{slices[0]}<span class="cut-blade" aria-hidden="true"></span><span class="cut-glint" aria-hidden="true"></span></span><span class="slice slice-2" aria-hidden="true">{slices[1]}</span>
 					</h1>
 				) : (
 					<h1 id="_top" data-page-title set:html={title} />
@@ -81,12 +81,13 @@ const slices = isArticulateTitle ? ['Art', 'iculate'] : null;
 <script>
 	const title = document.querySelector('.slice-title');
 	const blade = title?.querySelector('.cut-blade');
+	const glint = title?.querySelector('.cut-glint');
 	const s2 = title?.querySelector('.slice-2');
 	const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-	if (title && blade && s2) {
+	if (title && blade && glint && s2) {
 		if (reduceMotion) {
-			// Skip straight to the end state: no flash, iculate already settled below-left.
+			// Skip straight to the end state: no flash, no glint, iculate already settled below-left.
 			title.classList.add('is-cut');
 		} else {
 			// Fire once on load, after the entrance transition has a beat to settle.
@@ -95,6 +96,8 @@ const slices = isArticulateTitle ? ['Art', 'iculate'] : null;
 					blade.classList.add('flash');
 					setTimeout(() => {
 					    title.classList.add('is-cut');
+						// Sun-glint flare once the cut has landed and iculate has settled.
+						glint.classList.add('flare');
 					}, 550);
                     setTimeout(() => blade.classList.add('settled'), 150);
 				}, 300);
@@ -173,7 +176,9 @@ const slices = isArticulateTitle ? ['Art', 'iculate'] : null;
 			right: -0.03em;
 			width: 0.05em;
 			border-radius: 999rem;
-			background: linear-gradient(180deg, transparent, var(--sl-color-white), transparent);
+			/* Pure white core — not var(--sl-color-white), which is a text-color
+			   token that reads as near-black in the light theme. */
+			background: linear-gradient(180deg, transparent, #ffffff, transparent);
 			opacity: 0;
 			pointer-events: none;
 			transform: rotate(10deg);
@@ -199,12 +204,58 @@ const slices = isArticulateTitle ? ['Art', 'iculate'] : null;
 			40% {
 				opacity: 1;
 				transform: rotate(10deg) scaleY(1.15);
-				box-shadow: 0 0 14px 2px var(--sl-color-white), 0 0 26px 6px var(--sl-color-accent);
+				box-shadow: 0 0 16px 3px #ffffff, 0 0 30px 8px var(--sl-color-accent);
 			}
 			100% {
 				opacity: 1;
 				transform: rotate(10deg) scaleY(1);
-				box-shadow: 0 0 4px 1px var(--sl-color-accent);
+				box-shadow: 0 0 6px 1px var(--sl-color-accent);
+			}
+		}
+
+		/* Sun-glint: a small starburst that flares once at the cut point once
+		   iculate has settled — reads as a flash of light catching the blade. */
+		.cut-glint {
+			position: absolute;
+			top: 50%;
+			right: -0.03em;
+			width: 1.6em;
+			height: 1.6em;
+			transform: translate(50%, -50%) scale(0);
+			pointer-events: none;
+			opacity: 0;
+			/* Rays fade through the accent color rather than plain white, so the
+			   glint reads against a light-theme (near-white) hero background
+			   instead of disappearing as white-on-white. */
+			background:
+				radial-gradient(circle, #ffffff 0%, rgba(255, 255, 255, 0.85) 14%, transparent 55%),
+				linear-gradient(90deg, transparent 44%, var(--sl-color-accent) 48%, #ffffff 50%, var(--sl-color-accent) 52%, transparent 56%),
+				linear-gradient(0deg, transparent 44%, var(--sl-color-accent) 48%, #ffffff 50%, var(--sl-color-accent) 52%, transparent 56%),
+				linear-gradient(45deg, transparent 45%, var(--sl-color-accent) 48.5%, #ffffff 50%, var(--sl-color-accent) 51.5%, transparent 55%),
+				linear-gradient(135deg, transparent 45%, var(--sl-color-accent) 48.5%, #ffffff 50%, var(--sl-color-accent) 51.5%, transparent 55%);
+			filter: drop-shadow(0 0 6px rgba(0, 0, 0, 0.25));
+		}
+
+		:root[data-theme='dark'] .cut-glint {
+			filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.4));
+		}
+
+		.cut-glint.flare {
+			animation: glint-flare 0.6s ease-out forwards;
+		}
+
+		@keyframes glint-flare {
+			0% {
+				opacity: 0;
+				transform: translate(50%, -50%) scale(0.2);
+			}
+			35% {
+				opacity: 1;
+				transform: translate(50%, -50%) scale(1);
+			}
+			100% {
+				opacity: 0;
+				transform: translate(50%, -50%) scale(1.6);
 			}
 		}
 
