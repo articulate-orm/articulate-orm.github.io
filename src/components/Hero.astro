@@ -93,9 +93,11 @@ const slices = isArticulateTitle ? ['Art', 'iculate'] : null;
 			requestAnimationFrame(() => {
 				setTimeout(() => {
 					blade.classList.add('flash');
-					title.classList.add('is-cut');
-					setTimeout(() => blade.classList.add('settled'), 380);
-				}, 250);
+					setTimeout(() => {
+					    title.classList.add('is-cut');
+					}, 550);
+                    setTimeout(() => blade.classList.add('settled'), 150);
+				}, 300);
 			});
 		}
 	}
@@ -176,11 +178,11 @@ const slices = isArticulateTitle ? ['Art', 'iculate'] : null;
 			pointer-events: none;
 			transform: rotate(10deg);
 			transform-origin: center;
-			transition: opacity 0.4s ease 0.15s;
+			transition: opacity 0.4s ease 0.5s;
 		}
 
 		.cut-blade.flash {
-			animation: blade-flash 0.3s ease-out forwards;
+			animation: blade-flash 0.5s ease-out forwards;
 		}
 
 		/* The blade is a brief overlay — it fades away after firing. */
@@ -211,7 +213,7 @@ const slices = isArticulateTitle ? ['Art', 'iculate'] : null;
 		}
 
 		.slice-title.is-cut .slice-2 {
-			transform: translate3d(-0.12em, 0.55em, 0);
+			transform: translate3d(-0.05em, 0.25em, 0);
 		}
 
 		.tagline {
