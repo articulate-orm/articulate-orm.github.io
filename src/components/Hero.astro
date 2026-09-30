@@ -100,8 +100,10 @@ const slices = isArticulateTitle ? ['Art', 'iculate'] : null;
 					blade.classList.add('flash');
 					setTimeout(() => {
 						spark.classList.add('flare');
+					}, 120);
+					setTimeout(() => {
 						title.classList.add('is-cut');
-					}, 420);
+					}, 540);
 				}, 300);
 			});
 		}
@@ -220,7 +222,7 @@ const slices = isArticulateTitle ? ['Art', 'iculate'] : null;
 		}
 
 		.cut-blade.flash {
-			animation: blade-sweep 0.42s cubic-bezier(0.65, 0, 0.35, 1) forwards;
+			animation: blade-sweep 0.12s cubic-bezier(0.65, 0, 0.35, 1) forwards;
 		}
 
 		@keyframes blade-sweep {
