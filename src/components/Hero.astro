@@ -49,7 +49,7 @@ const slices = isArticulateTitle ? ['Art', 'iculate'] : null;
 			{
 				slices ? (
 					<h1 id="_top" data-page-title class="slice-title" aria-label={title}>
-						<span class="slice slice-1" aria-hidden="true">{slices[0]}<span class="cut-blade" aria-hidden="true"></span><span class="cut-spark" aria-hidden="true"></span></span><span class="slice slice-2" aria-hidden="true">{slices[1]}</span>
+						<span class="slice slice-1" aria-hidden="true">{slices[0]}<span class="cut-blade" aria-hidden="true"><span class="blade-glint" aria-hidden="true"></span></span><span class="cut-spark" aria-hidden="true"></span></span><span class="slice slice-2" aria-hidden="true">{slices[1]}</span>
 					</h1>
 				) : (
 					<h1 id="_top" data-page-title set:html={title} />
@@ -93,8 +93,10 @@ const slices = isArticulateTitle ? ['Art', 'iculate'] : null;
 			// Fire once on load, after the entrance transition has a beat to settle.
 			requestAnimationFrame(() => {
 				setTimeout(() => {
-					// The blade sweeps bottom-to-top; the spark catches right as it
-					// reaches the top edge, then iculate settles into place.
+					// The blade sweeps top-to-bottom, with a specular glint riding
+					// along its edge (a real blade highlight travels with the
+					// reveal, it doesn't flash everywhere at once). The spark
+					// catches at the bottom edge, then iculate settles into place.
 					blade.classList.add('flash');
 					setTimeout(() => {
 						spark.classList.add('flare');
@@ -241,12 +243,52 @@ const slices = isArticulateTitle ? ['Art', 'iculate'] : null;
 			}
 		}
 
+		/* Honest specular highlight: light doesn't flash along the whole
+		   blade at once, it rides the leading edge as the reveal travels.
+		   Clipped by .cut-blade's own clip-path, so it's only ever visible
+		   within the already-revealed portion — a bright point tracking
+		   where the edge currently is, not a static glow. */
+		.blade-glint {
+			position: absolute;
+			left: 50%;
+			top: 0%;
+			width: 260%;
+			height: 14%;
+			transform: translate(-50%, -50%);
+			border-radius: 999rem;
+			background: radial-gradient(ellipse, #ffffff 0%, rgba(234, 244, 255, 0.85) 40%, transparent 78%);
+			opacity: 0;
+			filter: blur(0.5px);
+		}
+
+		.cut-blade.flash .blade-glint {
+			animation: glint-travel 0.42s cubic-bezier(0.65, 0, 0.35, 1) forwards;
+		}
+
+		@keyframes glint-travel {
+			0% {
+				top: 0%;
+				opacity: 0;
+			}
+			8% {
+				opacity: 1;
+			}
+			70% {
+				top: 100%;
+				opacity: 1;
+			}
+			100% {
+				top: 100%;
+				opacity: 0;
+			}
+		}
+
 		/* A tiny bright spark at the top edge, right as the blade sweep
 		   arrives — four short rays fanned ~40deg off-axis, not a big
 		   radiating sunburst. */
 		.cut-spark {
 			position: absolute;
-			top: -14%;
+			bottom: -14%;
 			right: -0.03em;
 			width: 0.9em;
 			height: 0.9em;
