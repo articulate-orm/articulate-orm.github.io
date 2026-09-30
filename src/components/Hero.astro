@@ -79,48 +79,25 @@ const slices = isArticulateTitle ? ['Art', 'iculate'] : null;
 </div>
 
 <script>
-	const hero = document.querySelector('.hero');
 	const title = document.querySelector('.slice-title');
 	const blade = title?.querySelector('.cut-blade');
+	const s2 = title?.querySelector('.slice-2');
 	const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-	if (hero && title && blade && !reduceMotion) {
-		const CUT_AT = 4; // px the hero must have scrolled past its top before the blade fires
-		const SETTLE_DELAY = 380; // ms the blade stays visible after firing, regardless of scroll speed
-		let hasCut = false;
-		let ticking = false;
-		let settleTimer: ReturnType<typeof setTimeout> | undefined;
-
-		const update = () => {
-			ticking = false;
-			// Distance the hero itself has scrolled past the top of the viewport —
-			// independent of absolute page scroll position, so this always plays
-			// as the hero leaves view no matter where it sits on the page.
-			const scrolledPastHero = Math.max(0, -hero.getBoundingClientRect().top);
-
-			if (scrolledPastHero >= CUT_AT && !hasCut) {
-				hasCut = true;
-				blade.classList.remove('flash', 'settled');
-				void blade.offsetWidth; // restart the flash keyframe every time it (re)fires
-				blade.classList.add('flash');
-				clearTimeout(settleTimer);
-				settleTimer = setTimeout(() => blade.classList.add('settled'), SETTLE_DELAY);
-			} else if (scrolledPastHero < CUT_AT && hasCut) {
-				hasCut = false;
-				clearTimeout(settleTimer);
-				blade.classList.remove('flash', 'settled');
-			}
-		};
-
-		const onScroll = () => {
-			if (!ticking) {
-				ticking = true;
-				requestAnimationFrame(update);
-			}
-		};
-
-		update();
-		window.addEventListener('scroll', onScroll, { passive: true });
+	if (title && blade && s2) {
+		if (reduceMotion) {
+			// Skip straight to the end state: no flash, iculate already settled below-left.
+			title.classList.add('is-cut');
+		} else {
+			// Fire once on load, after the entrance transition has a beat to settle.
+			requestAnimationFrame(() => {
+				setTimeout(() => {
+					blade.classList.add('flash');
+					title.classList.add('is-cut');
+					setTimeout(() => blade.classList.add('settled'), 380);
+				}, 250);
+			});
+		}
 	}
 </script>
 
@@ -179,14 +156,16 @@ const slices = isArticulateTitle ? ['Art', 'iculate'] : null;
 
 		.cut-blade {
 			position: absolute;
-			top: -8%;
-			bottom: -8%;
-			right: -0.02em;
+			top: -14%;
+			bottom: -14%;
+			right: -0.03em;
 			width: 0.05em;
 			border-radius: 999rem;
 			background: linear-gradient(180deg, transparent, var(--sl-color-white), transparent);
 			opacity: 0;
 			pointer-events: none;
+			transform: rotate(10deg);
+			transform-origin: center;
 			transition: opacity 0.4s ease 0.15s;
 		}
 
@@ -194,8 +173,7 @@ const slices = isArticulateTitle ? ['Art', 'iculate'] : null;
 			animation: blade-flash 0.3s ease-out forwards;
 		}
 
-		/* The blade is a brief overlay, not a permanent seam — it fades away
-		   after firing and leaves the title looking untouched. */
+		/* The blade is a brief overlay — it fades away after firing. */
 		.cut-blade.settled {
 			opacity: 0 !important;
 		}
@@ -203,19 +181,27 @@ const slices = isArticulateTitle ? ['Art', 'iculate'] : null;
 		@keyframes blade-flash {
 			0% {
 				opacity: 0;
-				transform: scaleY(0.4);
+				transform: rotate(10deg) scaleY(0.4);
 				box-shadow: none;
 			}
 			40% {
 				opacity: 1;
-				transform: scaleY(1.15);
+				transform: rotate(10deg) scaleY(1.15);
 				box-shadow: 0 0 14px 2px var(--sl-color-white), 0 0 26px 6px var(--sl-color-accent);
 			}
 			100% {
 				opacity: 1;
-				transform: scaleY(1);
+				transform: rotate(10deg) scaleY(1);
 				box-shadow: 0 0 4px 1px var(--sl-color-accent);
 			}
+		}
+
+		.slice-2 {
+			transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.15s;
+		}
+
+		.slice-title.is-cut .slice-2 {
+			transform: translate(-0.12em, 0.55em);
 		}
 
 		.tagline {
