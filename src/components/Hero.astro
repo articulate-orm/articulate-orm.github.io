@@ -154,6 +154,16 @@ const slices = isArticulateTitle ? ['Art', 'iculate'] : null;
 			position: relative;
 		}
 
+		/* Chromium sometimes fails to repaint gradient/background-clip:text
+		   content on a transformed child until something forces a new
+		   composite layer — the layout box moves (DevTools shows it) but the
+		   painted glyphs visually lag behind. Force its own layer up front. */
+		.slice-2 {
+			will-change: transform;
+			backface-visibility: hidden;
+			transform: translate3d(0, 0, 0);
+		}
+
 		.cut-blade {
 			position: absolute;
 			top: -14%;
@@ -201,7 +211,7 @@ const slices = isArticulateTitle ? ['Art', 'iculate'] : null;
 		}
 
 		.slice-title.is-cut .slice-2 {
-			transform: translate(-0.12em, 0.55em);
+			transform: translate3d(-0.12em, 0.55em, 0);
 		}
 
 		.tagline {

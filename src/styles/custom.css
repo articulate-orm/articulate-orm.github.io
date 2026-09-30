@@ -16,14 +16,31 @@
 	padding-block: 2rem 3rem;
 }
 
-.hero h1 {
+/* Applied per-slice (not on the whole h1) so each span paints and
+   repaints independently — keeps the gradient mask correctly tracking
+   a transformed child instead of going stale after the slice-cut moves it. */
+.hero h1:not(.slice-title) {
 	background: linear-gradient(120deg, var(--sl-color-accent-high), var(--sl-color-accent));
 	-webkit-background-clip: text;
 	background-clip: text;
 	color: transparent;
 }
 
-:root[data-theme='dark'] .hero h1 {
+.hero h1.slice-title .slice {
+	background: linear-gradient(120deg, var(--sl-color-accent-high), var(--sl-color-accent));
+	-webkit-background-clip: text;
+	background-clip: text;
+	color: transparent;
+}
+
+:root[data-theme='dark'] .hero h1:not(.slice-title) {
+	background: linear-gradient(120deg, #dbe6ff, #7aa2f7);
+	-webkit-background-clip: text;
+	background-clip: text;
+	color: transparent;
+}
+
+:root[data-theme='dark'] .hero h1.slice-title .slice {
 	background: linear-gradient(120deg, #dbe6ff, #7aa2f7);
 	-webkit-background-clip: text;
 	background-clip: text;
