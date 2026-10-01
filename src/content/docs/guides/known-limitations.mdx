@@ -27,8 +27,6 @@ This page tracks current library behavior and workarounds that should be recheck
 
 ## Query builder
 
-- `where('column', null)` currently compiles as `column = ?` with a null parameter. Use `whereNull('column')` or `whereNotNull('column')` instead.
-- `QueryBuilder::chunk()` is documented but may be unavailable in some installed dependency versions — use limit/offset loops for batch reads instead.
 - `whereRaw()` should always use bound parameters, e.g. `whereRaw('total > ?', [100])`; concatenating user input is unsafe.
 
 ## Migrations

@@ -12,6 +12,34 @@ Page through query results and apply global filters such as soft delete.
 ## Pagination strategies
 
 <Tabs>
+<TabItem label="Cursor pagination">
+Uses the last seen ordered value instead of a numeric offset:
+
+```php
+$qb
+    ->orderBy('id', 'ASC')
+    ->cursorLimit(10);
+
+$result = $qb->getCursorPaginatedResult();
+
+$items = $result->getItems();
+$cursor = $result->getNextCursor(); // opaque token encoding the last row's order-column value(s) — pass it to cursor() to fetch the next page
+```
+
+```php
+// Next page:
+$qb
+    ->orderBy('id', 'ASC')
+    ->cursor($cursor)
+    ->cursorLimit(10);
+
+$result = $qb->getCursorPaginatedResult();
+```
+
+<Aside type="caution">
+	Use a unique or tie-broken ordering, such as `created_at` plus `id`, so records aren't skipped or duplicated across pages.
+</Aside>
+</TabItem>
 <TabItem label="Offset pagination">
 Simple and useful for small or administrative lists:
 
@@ -20,22 +48,6 @@ $qb->limit(10)->offset(20);
 ```
 
 It can become expensive or unstable on large, frequently changing datasets.
-</TabItem>
-<TabItem label="Cursor pagination">
-Uses the last seen ordered value instead of a numeric offset:
-
-```php
-$qb
-    ->cursor($cursor)
-    ->cursorLimit(10)
-    ->orderBy('id', 'ASC');
-
-$result = $qb->getCursorPaginatedResult();
-```
-
-<Aside type="caution">
-	Use a unique or tie-broken ordering, such as `created_at` plus `id`, so records aren't skipped or duplicated across pages.
-</Aside>
 </TabItem>
 </Tabs>
 
@@ -51,7 +63,24 @@ Ordering matters for both user-facing list behavior and cursor stability.
 
 ## Soft delete filter
 
-Register `SoftDeleteFilter` to automatically exclude records with a deleted marker such as `deleted_at`. Use `withoutFilter('soft_delete')` on a query builder when an administrative query intentionally needs to include soft-deleted records.
+Register `SoftDeleteFilter` to automatically exclude records with a deleted marker such as `deleted_at`. The filter is **not enabled automatically** — register it on each `EntityManager` that should apply it:
+
+```php
+use Articulate\Modules\QueryBuilder\Filter\SoftDeleteFilter;
+
+$entityManager->getFilters()->add('soft_delete', new SoftDeleteFilter());
+```
+
+Once registered, every query built through that `EntityManager` excludes soft-deleted rows by default. Use `withoutFilter('soft_delete')` on a single query builder when an administrative query intentionally needs to include soft-deleted records:
+
+```php
+$entityManager
+    ->createQueryBuilder(Customer::class)
+    ->withoutFilter('soft_delete')
+    ->getResult();
+```
+
+Mark the entity itself with `#[SoftDeleteable]` so `remove()` sets the marker instead of issuing a `DELETE`:
 
 ```php
 #[SoftDeleteable(fieldName: 'deleted_at', columnName: 'deleted_at')]
@@ -61,6 +90,10 @@ class Customer
     public ?string $deleted_at = null;
 }
 ```
+
+<Aside type="note">
+	There is no global switch — registering/disabling the filter only affects the `EntityManager` instance it was added to. `$entityManager->getFilters()->disable('soft_delete')` turns it off for every query builder created from that instance; `enable('soft_delete')` turns it back on.
+</Aside>
 
 ## Common pitfalls
 

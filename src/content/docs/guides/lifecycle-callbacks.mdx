@@ -37,11 +37,23 @@ Available callback attributes:
 
 ## Use cases
 
-- Set `created_at` or `updated_at` timestamps.
-- Write audit records after persistence.
-- Validate entity state before flush.
-- Normalize values after loading from the database.
-- Mark soft-delete columns before removal.
+<CardGrid>
+	<Card title="Timestamps" icon="pencil">
+		Set `created_at` in `#[PrePersist]` and `updated_at` in `#[PreUpdate]`. There is no built-in auto-timestamp attribute — this is done by hand in the callback, as in the example below.
+	</Card>
+	<Card title="Auditing" icon="pencil">
+		Write an audit-log record in `#[PostPersist]` / `#[PostUpdate]` / `#[PostRemove]`, once the write is known to have succeeded.
+	</Card>
+	<Card title="Validation" icon="pencil">
+		Reject invalid state in `#[PrePersist]` / `#[PreUpdate]` by throwing — the throw prevents the write (see pitfalls below).
+	</Card>
+	<Card title="Normalization" icon="pencil">
+		Trim, cast, or recompute derived fields in `#[PostLoad]` right after hydration, so every code path sees the same shape.
+	</Card>
+	<Card title="Soft-delete bookkeeping" icon="pencil">
+		Stamp the soft-delete marker in `#[PreRemove]` for entities that don't rely solely on `#[SoftDeleteable]`'s own handling.
+	</Card>
+</CardGrid>
 
 ```php
 #[PreUpdate]

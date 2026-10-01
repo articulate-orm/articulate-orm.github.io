@@ -26,7 +26,7 @@ DATABASE_PASSWORD=userpassword
 ```
 
 <Aside type="tip">
-	If you're switching between MySQL and PostgreSQL migration folders (as the demo project does), also set `ARTICULATE_MIGRATIONS_PATH` so migration commands know which directory to read/write.
+	`ARTICULATE_MIGRATIONS_PATH` only matters if you keep separate MySQL/PostgreSQL migration directories, as the [demo project](https://github.com/articulate-orm/articulate-demo) does to show both dialects side by side. Most applications target one database and don't need this variable.
 </Aside>
 
 ## Services
@@ -55,5 +55,9 @@ docker compose exec php bin/console app:catalog:crud
 ```
 
 ## Next steps
+
+<Aside type="tip" title="Using Symfony?">
+	The [Symfony bundle](https://github.com/articulate-orm/symfony) wires `Connection` and `EntityManager` into the container automatically — `composer require articulate-orm/symfony` and skip the manual service registration above.
+</Aside>
 
 Continue to [Entity Mapping](/guides/entity-mapping/) to map your first PHP classes to database tables, or read [Context-Bounded Entities](/concepts/context-bounded-entities/) to understand what makes Articulate different.
