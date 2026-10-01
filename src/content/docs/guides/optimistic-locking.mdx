@@ -9,7 +9,7 @@ import { Aside, Steps } from '@astrojs/starlight/components';
 
 Detect lost updates when two contexts write the same row, without holding a database lock between the read and the write.
 
-Optimistic locking is the clearest expression of Articulate's differentiator. A naive version-per-entity-class lock **breaks** under context-bounded entities: if only one sibling class mapping a table bumps and checks the version column, another sibling can silently overwrite changes undetected. Articulate makes the contract explicit and per-class — every class mapping a versioned table must account for the version column, either by checking it (`#[Version]`) or by bumping it without checking (`#[VersionAware]`).
+Optimistic locking is the clearest expression of Articulate's differentiator. The standard "one table, one entity" version lock assumes every writer goes through the same class, so bumping and checking a single version column is enough. Context-bounded entities break that assumption — several classes can write the same row — so Articulate makes the version contract explicit and per-class instead: every class mapping a versioned table must account for the version column, either by checking it (`#[Version]`) or by bumping it without checking (`#[VersionAware]`). The result is **more correct** lost-update detection than a naive row-wide lock: a lightweight sibling class can't silently skip the check and let an unguarded write slip past another class's version guard undetected.
 
 <Aside type="note">
 	Contrast with [pessimistic locking](/guides/transactions-locking/): `SELECT ... FOR UPDATE` blocks other writers for the duration of a transaction, while optimistic locking never locks and instead detects the conflict at write time.

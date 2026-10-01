@@ -60,6 +60,22 @@ $batch = $entityManager
 $entityManager->clear();
 ```
 
+`QueryBuilder::chunk($size)` wraps this limit/offset loop in a generator, so you don't manage `$offset` by hand:
+
+```php
+foreach ($qb->orderBy('placed_at', 'ASC')->chunk($chunkSize) as $batch) {
+    foreach ($batch as $snapshot) {
+        // process $snapshot
+    }
+
+    $entityManager->clear();
+}
+```
+
+<Aside type="note">
+	There is no separate bulk-write `batch()` method — writes still go through the normal `persist()` + `flush()` cycle. `flush()` already batches all pending `INSERT`/`UPDATE`/`DELETE` statements from the unit of work into one transaction; see [Unit of Work & Identity Map](/concepts/unit-of-work-identity-map/).
+</Aside>
+
 ## Common pitfalls
 
 <Aside type="caution">

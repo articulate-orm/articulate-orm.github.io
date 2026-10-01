@@ -21,7 +21,7 @@ hero:
       variant: minimal
 ---
 
-import { Card, CardGrid, Aside, Badge } from '@astrojs/starlight/components';
+import { Card, CardGrid, Aside, Badge, LinkCard } from '@astrojs/starlight/components';
 
 <div style="text-align:center; margin-block: -1.5rem 2.5rem;">
 	<Badge text="PHP 8.4+" variant="tip" size="medium" /> <Badge text="MySQL & PostgreSQL" variant="note" size="medium" /> <Badge text="Apache 2.0" variant="success" size="medium" />
@@ -46,7 +46,7 @@ Articulate makes the bounded context the modeling boundary. Several small entity
 		Multiple entity classes can map to one physical table, each exposing only the fields and relationships needed for that context.
 	</Card>
 	<Card title="Per-context Unit of Work" icon="setting">
-		Each `EntityManager` owns its own `IdentityMap` and `UnitOfWork` — no process-wide singletons, no global state.
+		Each `EntityManager` owns its own `IdentityMap`, with one active `UnitOfWork` at a time — no process-wide singletons, no global state. A manager can still open additional scoped `UnitOfWork`s for bounded sub-operations that flush together.
 	</Card>
 	<Card title="Explicit per-slice locking" icon="approve-check">
 		Optimistic locking guards only the columns a slice actually owns, so a cosmetic write in one context can't block a critical one in another.
@@ -55,12 +55,16 @@ Articulate makes the bounded context the modeling boundary. Several small entity
 		MySQL 8.0 and PostgreSQL 15 are both primary targets — schema diffing, migrations, and type mapping understand both.
 	</Card>
 	<Card title="Attribute-driven metadata" icon="document">
-		No XML, no YAML, no annotations. All mapping lives in PHP 8 attributes: `#[Entity]`, `#[Property]`, `#[OneToMany]`, and more.
+		No XML, no YAML, no annotations. Mapping lives in PHP 8 attributes right next to the code they describe: `#[Entity]`, `#[Property]`, `#[OneToMany]`, and more.
 	</Card>
 	<Card title="Deliberate shared-table writes" icon="star">
-		Cross-entity remove propagation, cache eviction, and version guards all reason correctly about sibling entities sharing a row.
+		Cross-entity remove propagation, cache eviction, and version guards all reason correctly about sibling entities sharing a row — flush combines pending changes across siblings into the minimal set of SQL statements, not one per class.
 	</Card>
 </CardGrid>
+
+<Aside type="tip" title="Built with a real quality bar">
+	Tests run against real MySQL and PostgreSQL connections — no mocks — and every change goes through PHPStan level 6, Deptrac architecture checks, and Infection mutation testing. See the current [mutation score and QA pipeline](/architecture/boundaries/#qa-pipeline).
+</Aside>
 
 ## Quick start
 
@@ -102,14 +106,14 @@ $user = $em->getRepository(User::class)->find($user->id);
 ```
 
 <CardGrid>
-	<Card title="Next: Getting Started" icon="rocket">
-		Install the library, wire the services, and run your first entity through a full persist/find cycle.
-
-		[Read the guide →](/guides/getting-started/)
-	</Card>
-	<Card title="Next: Context-Bounded Entities" icon="open-book">
-		The core idea behind Articulate, explained with a before/after comparison.
-
-		[Read the concept →](/concepts/context-bounded-entities/)
-	</Card>
+	<LinkCard
+		title="Next: Getting Started"
+		description="Install the library, wire the services, and run your first entity through a full persist/find cycle."
+		href="/guides/getting-started/"
+	/>
+	<LinkCard
+		title="Next: Context-Bounded Entities"
+		description="The core idea behind Articulate, explained with a before/after comparison."
+		href="/concepts/context-bounded-entities/"
+	/>
 </CardGrid>

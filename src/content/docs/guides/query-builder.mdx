@@ -56,11 +56,21 @@ $qb->whereRaw('total > ?', [100]);
 
 For large result sets, prefer bounded batches and clear the `EntityManager` between batches so the identity map does not grow without limit. See [Performance](/guides/performance/) for memory behavior.
 
+`chunk($size)` wraps this in a generator that handles the limit/offset loop for you:
+
+```php
+foreach ($qb->chunk(100) as $batch) {
+    foreach ($batch as $row) {
+        // process $row
+    }
+
+    $entityManager->clear();
+}
+```
+
 ## Common pitfalls
 
 <Aside type="caution">
-- Use `whereNull()` for SQL null checks. `where('column', null)` currently compiles as `column = ?` with a null parameter instead — see [Known Limitations](/guides/known-limitations/).
 - Empty `whereIn()` input should be treated intentionally.
 - Never concatenate user input into `whereRaw()` — always bind parameters.
-- `QueryBuilder::chunk()` is documented but not yet available in every installed dependency version — batch demos fall back to limit/offset loops.
 </Aside>

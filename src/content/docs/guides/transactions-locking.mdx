@@ -46,14 +46,24 @@ $stock = $entityManager
 	Locks require an active transaction. Calling `lock()` outside one raises a transaction-required error.
 </Aside>
 
-An inventory-decrement flow locks stock rows before decrementing:
+An inventory-decrement flow locks stock rows before decrementing — `lock()` issues `SELECT ... FOR UPDATE`, so the row is held until the surrounding transaction commits or rolls back, and any other transaction trying to read or lock the same row blocks until then. That is what prevents two concurrent decrements from both reading the same starting quantity and overselling stock:
 
 ```php
-$stock = $entityManager
-    ->createQueryBuilder(StockLock::class)
-    ->where('product_id', $productId)
-    ->lock()
-    ->getSingleResult();
+$entityManager->transactional(function (EntityManager $em) use ($productId, $qty) {
+    $stock = $em
+        ->createQueryBuilder(StockLock::class)
+        ->where('product_id', $productId)
+        ->lock()
+        ->getSingleResult();
+
+    if ($stock->quantity < $qty) {
+        throw new InsufficientStockException($productId);
+    }
+
+    $stock->quantity -= $qty;
+    $em->persist($stock);
+    $em->flush();
+});
 ```
 
 ## Common pitfalls

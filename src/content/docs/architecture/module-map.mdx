@@ -30,6 +30,14 @@ import { Aside } from '@astrojs/starlight/components';
 
 Output feeds `MigrateCommand` and `DiffCommand`.
 
+## Commands
+
+```bash frame="terminal"
+bin/console articulate:warm-metadata-cache
+```
+
+Run `articulate:warm-metadata-cache` as a deploy step to discover every mapped entity class — including each slice of a shared table — and build its metadata ahead of the first request, instead of paying that cost on a cold cache.
+
 ## Where new things go
 
 | Adding... | Goes in... |

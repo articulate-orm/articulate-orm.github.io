@@ -25,9 +25,29 @@ import { Aside, Steps } from '@astrojs/starlight/components';
 
 ## Memory-efficient unit of work
 
-- Clear entities from memory that are no longer needed within specific operations via `$em->clear()`.
+- Clear entities from memory that are no longer needed within specific operations via <nobr>`$em->clear()`</nobr>.
 - Different units of work can track their own entities independently.
 - `EntityManager` combines all unit-of-work changes into minimal database queries during flush.
+
+Two ways to keep a bounded sub-operation from growing the main identity map:
+
+```php
+// Option A: scoped UnitOfWork for a bounded sub-operation, cleared right after
+$scope = $em->createUnitOfWork();
+$em->setActiveUnitOfWork($scope);
+// ... persist/find work for this sub-operation ...
+$em->flush();
+$em->removeUnitOfWork($scope);
+
+// Option B: keep entities that must survive in the main UoW, clear only the scratch one
+$mainUow = $em->getActiveUnitOfWork();
+$scratch = $em->createUnitOfWork();
+$em->setActiveUnitOfWork($scratch);
+// ... iterate, persisting only what should be discarded after this pass ...
+$em->setActiveUnitOfWork($mainUow);
+```
+
+Option A suits a self-contained batch step; option B suits a long-running process that wants to retain a small set of entities across many short-lived passes. Either way, `flush()` on the `EntityManager` still commits pending work from every registered `UnitOfWork` in one transaction.
 
 Useful for processing large datasets, complex business operations spanning multiple contexts, and long-running processes with varying entity lifecycles.
 
