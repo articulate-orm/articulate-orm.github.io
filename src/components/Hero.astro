@@ -192,24 +192,32 @@ const slices = isArticulateTitle ? ['Art', 'iculate'] : null;
 			transform: translate3d(0, 0, 0);
 		}
 
+		.slice-title {
+			--cut-color: #65ccff;
+		}
+
+		:root[data-theme='dark'] .slice-title {
+			--cut-color: #ffffff;
+		}
+
 		.cut-blade {
 			position: absolute;
 			top: -14%;
 			bottom: -14%;
 			right: -0.03em;
-			width: 0.06em;
+			/* Fruit-Ninja style: a thin streak, not a wide bar. The tip (near
+			   the leading edge) stays bright; the trail left behind it fades
+			   out, like a blade-flash dissipating after the slash passes. */
+			width: 0.028em;
 			border-radius: 999rem;
-			/* Cold steel: layered blue-grey stops with a bright core streak,
-			   instead of a flat white line. */
 			background: linear-gradient(
 				180deg,
-				transparent,
-				#274873 8%,
-				#7fb2e8 32%,
-				#eaf4ff 48%,
-				#7fb2e8 64%,
-				#1c3a5e 88%,
-				transparent
+				transparent 0%,
+				color-mix(in srgb, var(--cut-color) 35%, transparent) 20%,
+				color-mix(in srgb, var(--cut-color) 70%, transparent) 55%,
+				var(--cut-color) 82%,
+				#ffffff 96%,
+				transparent 100%
 			);
 			opacity: 0;
 			pointer-events: none;
@@ -235,7 +243,8 @@ const slices = isArticulateTitle ? ['Art', 'iculate'] : null;
 			70% {
 				opacity: 1;
 				clip-path: inset(0 0 0% 0);
-				box-shadow: 0 0 10px 2px rgba(127, 178, 232, 0.75), 0 0 20px 5px rgba(39, 72, 115, 0.5);
+				box-shadow: 0 0 8px 1.5px color-mix(in srgb, var(--cut-color) 75%, transparent),
+					0 0 16px 4px color-mix(in srgb, var(--cut-color) 40%, transparent);
 			}
 			100% {
 				opacity: 0;
@@ -245,21 +254,28 @@ const slices = isArticulateTitle ? ['Art', 'iculate'] : null;
 		}
 
 		/* Honest specular highlight: light doesn't flash along the whole
-		   blade at once, it rides the leading edge as the reveal travels.
-		   Clipped by .cut-blade's own clip-path, so it's only ever visible
-		   within the already-revealed portion — a bright point tracking
-		   where the edge currently is, not a static glow. */
+		   blade at once, it rides the leading edge as the reveal travels —
+		   a tight bright point (the "blade tip") with a short fading trail
+		   behind it, like a Fruit-Ninja slash streak. Clipped by
+		   .cut-blade's own clip-path, so it's only ever visible within the
+		   already-revealed portion. */
 		.blade-glint {
 			position: absolute;
 			left: 50%;
 			top: 0%;
-			width: 260%;
-			height: 14%;
-			transform: translate(-50%, -50%);
+			width: 220%;
+			height: 34%;
+			transform: translate(-50%, -82%);
 			border-radius: 999rem;
-			background: radial-gradient(ellipse, #ffffff 0%, rgba(234, 244, 255, 0.85) 40%, transparent 78%);
+			background: linear-gradient(
+				180deg,
+				transparent 0%,
+				color-mix(in srgb, var(--cut-color) 55%, transparent) 55%,
+				#ffffff 92%,
+				#ffffff 100%
+			);
 			opacity: 0;
-			filter: blur(0.5px);
+			filter: blur(0.4px);
 		}
 
 		.cut-blade.flash .blade-glint {
@@ -286,7 +302,8 @@ const slices = isArticulateTitle ? ['Art', 'iculate'] : null;
 
 		/* A tiny bright spark at the top edge, right as the blade sweep
 		   arrives — four short rays fanned ~40deg off-axis, not a big
-		   radiating sunburst. */
+		   radiating sunburst. Yellowish, distinct from the cut's own
+		   color — this reads as an impact spark, not the blade itself. */
 		.cut-spark {
 			position: absolute;
 			bottom: -14%;
@@ -297,10 +314,10 @@ const slices = isArticulateTitle ? ['Art', 'iculate'] : null;
 			pointer-events: none;
 			opacity: 0;
 			background:
-				radial-gradient(circle, #ffffff 0%, #d9ecff 22%, transparent 60%),
-				linear-gradient(90deg, transparent 40%, #eaf4ff 47%, #ffffff 50%, #eaf4ff 53%, transparent 60%),
-				linear-gradient(0deg, transparent 40%, #eaf4ff 47%, #ffffff 50%, #eaf4ff 53%, transparent 60%);
-			filter: drop-shadow(0 0 4px rgba(127, 178, 232, 0.9));
+				radial-gradient(circle, #fffbe0 0%, #ffd866 22%, transparent 60%),
+				linear-gradient(90deg, transparent 40%, #ffe9a8 47%, #fff3cf 50%, #ffe9a8 53%, transparent 60%),
+				linear-gradient(0deg, transparent 40%, #ffe9a8 47%, #fff3cf 50%, #ffe9a8 53%, transparent 60%);
+			filter: drop-shadow(0 0 4px rgba(255, 196, 64, 0.85));
 		}
 
 		.cut-spark.flare {
