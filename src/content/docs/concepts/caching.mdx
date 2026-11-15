@@ -22,18 +22,12 @@ Request C: identity map miss → L2 cache hit → DB skipped entirely
 ```php
 $em = new EntityManager(
     $connection,
-    resultCache: $cachePool,           // also backs L2 cache unless overridden
-    secondLevelCacheTtl: 3600,
-);
-
-// Or with a dedicated L2 pool:
-$em = new EntityManager(
-    $connection,
-    resultCache: $queryPool,
-    secondLevelCache: $entityPool,     // separate backend for entity cache
+    secondLevelCache: $entityPool,
     secondLevelCacheTtl: 3600,
 );
 ```
+
+`secondLevelCache:` is the only switch: `resultCache:` alone never caches `find()`. Both options may point at the same pool. Ids are normalized to the primary-key property's type, so `find(User::class, '1')` and `find(User::class, 1)` share one entry.
 
 `find()` checks the identity map first, then the L2 cache, then the database. On `flush()`, modified and deleted entity entries are evicted automatically — stale data is never served after a write. Eviction also covers **sibling** entity classes sharing the same table and primary key.
 
