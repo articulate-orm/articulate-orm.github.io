@@ -60,6 +60,8 @@ $users = $em->createQueryBuilder(User::class)
 	Not covered by invalidation — these stay stale until TTL: an `UPDATE` that makes a row newly match the `WHERE` clause, changes to joined tables, bulk `update()`/`delete()` on a table string, and writes made through a **different** `EntityManager`. A hot id referenced by many cached queries carries a reverse-index entry that grows until its entries expire. Keep TTLs short for lists that must be fresh. See [Known Limitations](/guides/known-limitations/#caching).
 </Aside>
 
+Design rationale and rejected alternatives: [ADR 0002](/reference/adr-0002-collection-second-level-cache/).
+
 `cacheable()` is unrelated to `enableResultCache()` below: the result cache stores raw SQL rows by SQL text and is invalidated wholesale on every flush.
 
 ## Query result cache

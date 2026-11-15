@@ -9,13 +9,15 @@ import { Aside, Badge } from '@astrojs/starlight/components';
 
 ## Architectural boundaries
 
-Deptrac enforces 12 layers. The dependency direction is one-way:
+Deptrac enforces 13 layers. The dependency direction is one-way:
 
 ```text
 Commands → Migrations → Database → QueryBuilder → Repository →
-EntityManager → Schema → Attributes → Utils → Collection →
+EntityManager → Schema → Attributes → Cache → Utils → Collection →
 Generators → Exceptions
 ```
+
+`Cache` (`src/Modules/Cache/`) holds the collection cache behind `QueryBuilder::cacheable()`. It sits below both `QueryBuilder` and `EntityManager` so both can reach it without `QueryBuilder` depending on `EntityManager` — see [ADR 0002](/reference/adr-0002-collection-second-level-cache/).
 
 ```bash frame="terminal"
 composer architecture:check
