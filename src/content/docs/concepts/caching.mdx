@@ -45,7 +45,7 @@ $em = new EntityManager(
 $users = $em->createQueryBuilder(User::class)
     ->where('status', 'active')
     ->orderBy('id')
-    ->cacheable()          // TTL defaults to secondLevelCacheTtl
+    ->cacheable()          // TTL defaults to secondLevelCacheTtl (3600s)
     ->getResult();
 ```
 

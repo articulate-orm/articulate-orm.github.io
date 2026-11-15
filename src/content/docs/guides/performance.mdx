@@ -36,7 +36,7 @@ When a flush updates, deletes, or soft-deletes an entity, Articulate evicts cach
 List queries opt in per query with `cacheable()`. It caches the matched id list (not rows) and resolves each id through the entity cache; writes evict exactly the lists that contained the changed row, and inserts invalidate the table's lists via a generation counter.
 
 ```php
-$qb->cacheable($ttl); // $ttl defaults to secondLevelCacheTtl
+$qb->cacheable($ttl); // $ttl defaults to secondLevelCacheTtl (3600s)
 ```
 
 `findBy()` does not opt in. See [Caching](/concepts/caching/#cacheable-queries) for eligibility rules and staleness caveats.
