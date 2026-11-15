@@ -33,9 +33,13 @@ Second-level cache stores raw entity row data for `find()` lookups by entity cla
 
 When a flush updates, deletes, or soft-deletes an entity, Articulate evicts cache entries for every mapped entity class that shares the same table and primary key — keeping same-row projections consistent after writes.
 
-<Aside type="note">
-	Second-level cache does **not** serve list/query paths such as `findBy()`, query-builder `getResult()`, or chunked batch reads.
-</Aside>
+List queries opt in per query with `cacheable()`. It caches the matched id list (not rows) and resolves each id through the entity cache; writes evict exactly the lists that contained the changed row, and inserts invalidate the table's lists via a generation counter.
+
+```php
+$qb->cacheable($ttl); // $ttl defaults to secondLevelCacheTtl (3600s)
+```
+
+`findBy()` does not opt in. See [Caching](/concepts/caching/#cacheable-queries) for eligibility rules and staleness caveats.
 
 ## Query logging
 
@@ -79,7 +83,7 @@ foreach ($qb->orderBy('placed_at', 'ASC')->chunk($chunkSize) as $batch) {
 ## Common pitfalls
 
 <Aside type="caution">
-- Second-level cache helps `find()` by primary key, not list queries.
+- Second-level cache serves list queries only when they call `cacheable()`, and is stale across `EntityManager` instances until TTL.
 - Result cache can return stale aggregate rows until its TTL expires.
 - Scalar and partial hydration have some current caveats — see [Known Limitations](/guides/known-limitations/).
 </Aside>

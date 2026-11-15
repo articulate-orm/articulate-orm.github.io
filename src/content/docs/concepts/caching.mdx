@@ -22,24 +22,41 @@ Request C: identity map miss → L2 cache hit → DB skipped entirely
 ```php
 $em = new EntityManager(
     $connection,
-    resultCache: $cachePool,           // also backs L2 cache unless overridden
-    secondLevelCacheTtl: 3600,
-);
-
-// Or with a dedicated L2 pool:
-$em = new EntityManager(
-    $connection,
-    resultCache: $queryPool,
-    secondLevelCache: $entityPool,     // separate backend for entity cache
+    secondLevelCache: $entityPool,
     secondLevelCacheTtl: 3600,
 );
 ```
 
+`secondLevelCache:` is the only switch: `resultCache:` alone never caches `find()`. Both options may point at the same pool. Ids are normalized to the primary-key property's type, so `find(User::class, '1')` and `find(User::class, 1)` share one entry.
+
 `find()` checks the identity map first, then the L2 cache, then the database. On `flush()`, modified and deleted entity entries are evicted automatically — stale data is never served after a write. Eviction also covers **sibling** entity classes sharing the same table and primary key.
 
-<Aside type="note">
-	Second-level cache serves `find()` by class and primary key. It does **not** serve `findBy()`, query-builder `getResult()`, or chunked/list reads.
+### Cacheable queries
+
+`find()` uses the L2 cache automatically. Query-builder lists opt in per query with `cacheable(?int $ttl = null)`:
+
+```php
+$users = $em->createQueryBuilder(User::class)
+    ->where('status', 'active')
+    ->orderBy('id')
+    ->cacheable()          // TTL defaults to secondLevelCacheTtl (3600s)
+    ->getResult();
+```
+
+- **Caches the id list, not rows.** The ordered primary keys are stored; on a hit each id is resolved from the identity map or the per-entity L2 cache. If any id can't be resolved that way, the whole query re-runs against the database. Row data is never duplicated between the two caches.
+- **Silent no-op when not applicable.** Only applies when `getResult()` hydrates full entities with the default `ObjectHydrator` and the entity has a single-column primary key. Aggregates, specific-column selects, custom hydrators and `lock()` queries run uncached. Without a second-level cache configured on the manager, `cacheable()` does nothing.
+- **`chunk()` just works.** Each page has its own `limit`/`offset` and is cached as its own id list.
+- **Exact invalidation via a reverse index.** Every cached id gets a reverse-index entry keyed by *table + id*. When `flush()` updates, deletes or soft-deletes a row, only the lists that contained that row are evicted — whichever sibling class wrote it. Unrelated rows, and unrelated tables with the same id value, are untouched.
+- **Inserts bump a per-table generation counter.** The counter is part of every cache key, so an insert into a table makes all of its cached lists miss on the next read. Cost: one extra `getItem()` per `cacheable()` query.
+- **Fail-open.** Cache backend errors fall back to a database query. If the backend evicts a reverse-index entry early, the list that depends on it is discarded on the next read and re-queried.
+
+<Aside type="caution">
+	Not covered by invalidation — these stay stale until TTL: an `UPDATE` that makes a row newly match the `WHERE` clause, changes to joined tables, bulk `update()`/`delete()` on a table string, and writes made through a **different** `EntityManager`. A hot id referenced by many cached queries carries a reverse-index entry that grows until its entries expire. Keep TTLs short for lists that must be fresh. See [Known Limitations](/guides/known-limitations/#caching).
 </Aside>
+
+Design rationale and rejected alternatives: [ADR 0002](/reference/adr-0002-collection-second-level-cache/).
+
+`cacheable()` is unrelated to `enableResultCache()` below: the result cache stores raw SQL rows by SQL text and is invalidated wholesale on every flush.
 
 ## Query result cache
 
