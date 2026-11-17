@@ -76,6 +76,7 @@ export default defineConfig({
 					items: [
 						{ label: 'ADR 0001: Per-Slice Version Guards', slug: 'reference/adr-0001-per-slice-version-guards' },
 						{ label: 'ADR 0002: Collection Second-Level Cache', slug: 'reference/adr-0002-collection-second-level-cache' },
+						{ label: 'ADR 0003: Collection Cache Table Generations', slug: 'reference/adr-0003-collection-cache-table-generation-invalidation' },
 						{ label: 'Changelog', slug: 'reference/changelog' },
 					],
 				},

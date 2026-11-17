@@ -33,7 +33,7 @@ $em = new EntityManager(
 
 ### Cacheable queries
 
-`find()` uses the L2 cache automatically. Query-builder lists opt in per query with `cacheable(?int $ttl = null)`:
+`find()` uses the L2 cache automatically. Query-builder lists opt in per query with `cacheable(?int $ttl = null, array $dependsOn = [])`:
 
 ```php
 $users = $em->createQueryBuilder(User::class)
@@ -43,18 +43,46 @@ $users = $em->createQueryBuilder(User::class)
     ->getResult();
 ```
 
-- **Caches the id list, not rows.** The ordered primary keys are stored; on a hit each id is resolved from the identity map or the per-entity L2 cache. If any id can't be resolved that way, the whole query re-runs against the database. Row data is never duplicated between the two caches.
+- **Caches the id list, not rows.** The ordered primary keys of the **root table** (the table of the hydrated entity) are stored; on a hit each id is resolved from the identity map or the per-entity L2 cache. If any id can't be resolved that way, the whole query re-runs against the database. Row data is never duplicated between the two caches.
 - **Silent no-op when not applicable.** Only applies when `getResult()` hydrates full entities with the default `ObjectHydrator` and the entity has a single-column primary key. Aggregates, specific-column selects, custom hydrators and `lock()` queries run uncached. Without a second-level cache configured on the manager, `cacheable()` does nothing.
 - **`chunk()` just works.** Each page has its own `limit`/`offset` and is cached as its own id list.
-- **Exact invalidation via a reverse index.** Every cached id gets a reverse-index entry keyed by *table + id*. When `flush()` updates, deletes or soft-deletes a row, only the lists that contained that row are evicted — whichever sibling class wrote it. Unrelated rows, and unrelated tables with the same id value, are untouched.
-- **Inserts bump a per-table generation counter.** The counter is part of every cache key, so an insert into a table makes all of its cached lists miss on the next read. Cost: one extra `getItem()` per `cacheable()` query.
-- **Fail-open.** Cache backend errors fall back to a database query. If the backend evicts a reverse-index entry early, the list that depends on it is discarded on the next read and re-queried.
+
+#### Invalidation: table generations
+
+Every database table has one **table generation** counter in the cache pool. A cached list's key includes the generation of its root table and of every **dependency table** — any other table the query reads. `flush()` bumps the generation of every table it wrote, once per table however many rows changed: inserts, entity updates, merged sibling updates, hard and soft deletes, and many-to-many mapping (pivot) rows written by the unit of work. After a bump the old key no longer matches, the next read misses and re-queries, and the old list ages out via its TTL.
+
+That covers the cases row-level invalidation can't:
+
+- **Joins.** `join`, `leftJoin`, `rightJoin` and `crossJoin` targets are dependency tables. Aliases (`posts p`) resolve to the real table name; a self-join of the root table counts once.
+- **Subqueries.** Tables read by a `QueryBuilder` passed to `whereExists()`, `orWhereExists()` or `whereIn()` are dependency tables — recursively, including joins and subqueries nested inside them.
+- **Rows moving into or out of a predicate.** An `UPDATE` that makes a row newly match (or stop matching) the `WHERE` clause bumps the root table, so the list is re-queried.
+- **Sibling slices.** All slices of a table share its generation, so a write through `AdminUser` invalidates a list cached through `LoginUser`.
+- **Other `EntityManager`s.** Generations live in the shared pool: a flush in one context invalidates lists every context reads from that pool.
+
+Writes to tables a query does not read leave its list a hit.
+
+**Declare what the builder can't see.** Tables referenced only inside `whereRaw()`, raw join conditions or raw SQL are not detected. Name them with `dependsOn` (table names, not entity classes):
+
+```php
+$posts = $em->createQueryBuilder(Post::class)
+    ->whereRaw('EXISTS (SELECT 1 FROM post_tags pt WHERE pt.post_id = posts.id)')
+    ->cacheable(dependsOn: ['post_tags'])
+    ->getResult();
+```
+
+Declared tables are merged with the detected ones and deduplicated, so over-declaring — including a table the query already joins — is harmless.
+
+**The trade-off is hit rate.** Any unit-of-work write to a table evicts every cached list that reads it, related to the changed row or not. `cacheable()` pays off for lists over tables that are read far more often than written. Cost per `cacheable()` query: one batched `getItems()` for the root and dependency generations, alongside the id-list read.
+
+**Bump timing.** When `flush()` owns the transaction, the bump runs after `COMMIT`, so a concurrent reader can't re-cache pre-commit state under the new generation. When `flush()` runs inside a caller-owned transaction (including `transactional()`), the bump runs at the end of `flush()`, before the caller commits: another process can cache the pre-commit list under the new generation in that window, and it stays stale until TTL.
+
+**Fail-open.** Cache backend errors fall back to a database query. If any involved table's generation can't be read, that call skips the cache entirely — no read, no write — because a list stored under an unknown generation could never be invalidated. A bump that fails during an outage leaves pre-change lists matchable after recovery, until TTL.
 
 <Aside type="caution">
-	Not covered by invalidation — these stay stale until TTL: an `UPDATE` that makes a row newly match the `WHERE` clause, changes to joined tables, bulk `update()`/`delete()` on a table string, and writes made through a **different** `EntityManager`. A hot id referenced by many cached queries carries a reverse-index entry that grows until its entries expire. Keep TTLs short for lists that must be fresh. See [Known Limitations](/guides/known-limitations/#caching).
+	Writes outside the unit of work — `QueryBuilder` `update()`/`delete()`/`insert()` and raw SQL — never bump a generation. Lists reading those tables stay stale until TTL. Invalidate by writing through `flush()`, keep TTLs short, or don't use `cacheable()` on those tables. See [Known Limitations](/guides/known-limitations/#caching).
 </Aside>
 
-Design rationale and rejected alternatives: [ADR 0002](/reference/adr-0002-collection-second-level-cache/).
+Design rationale: [ADR 0003](/reference/adr-0003-collection-cache-table-generation-invalidation/), which supersedes the row-level design in [ADR 0002](/reference/adr-0002-collection-second-level-cache/).
 
 `cacheable()` is unrelated to `enableResultCache()` below: the result cache stores raw SQL rows by SQL text and is invalidated wholesale on every flush.
 

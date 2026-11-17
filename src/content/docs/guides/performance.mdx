@@ -33,10 +33,10 @@ Second-level cache stores raw entity row data for `find()` lookups by entity cla
 
 When a flush updates, deletes, or soft-deletes an entity, Articulate evicts cache entries for every mapped entity class that shares the same table and primary key — keeping same-row projections consistent after writes.
 
-List queries opt in per query with `cacheable()`. It caches the matched id list (not rows) and resolves each id through the entity cache; writes evict exactly the lists that contained the changed row, and inserts invalidate the table's lists via a generation counter.
+List queries opt in per query with `cacheable()`. It caches the matched id list (not rows) and resolves each id through the entity cache; any `flush()` write to the root table or a joined/subquery table invalidates the list via that table's generation. Cache lists over read-mostly tables — every write to a table evicts all lists reading it.
 
 ```php
-$qb->cacheable($ttl); // $ttl defaults to secondLevelCacheTtl (3600s)
+$qb->cacheable($ttl, dependsOn: ['tags']); // $ttl defaults to secondLevelCacheTtl (3600s); dependsOn names tables only raw SQL reaches
 ```
 
 `findBy()` does not opt in. See [Caching](/concepts/caching/#cacheable-queries) for eligibility rules and staleness caveats.
@@ -83,7 +83,7 @@ foreach ($qb->orderBy('placed_at', 'ASC')->chunk($chunkSize) as $batch) {
 ## Common pitfalls
 
 <Aside type="caution">
-- Second-level cache serves list queries only when they call `cacheable()`, and is stale across `EntityManager` instances until TTL.
+- Second-level cache serves list queries only when they call `cacheable()`, and per-entity entries are stale across `EntityManager` instances until TTL.
 - Result cache can return stale aggregate rows until its TTL expires.
 - Scalar and partial hydration have some current caveats — see [Known Limitations](/guides/known-limitations/).
 </Aside>

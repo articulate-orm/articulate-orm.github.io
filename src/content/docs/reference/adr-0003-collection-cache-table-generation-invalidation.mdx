@@ -1,0 +1,58 @@
+---
+title: "ADR 0003: Collection Cache — Table-Generation Invalidation"
+description: Architecture decision record — replacing the collection cache's reverse index and insert generation with one coarse table generation per table, covering joins and subqueries.
+sidebar:
+  order: 3
+---
+
+import { Badge } from '@astrojs/starlight/components';
+
+<Badge text="Status: Accepted" variant="success" size="large" />
+
+Supersedes the invalidation design of [ADR 0002](/reference/adr-0002-collection-second-level-cache/). The rest of ADR 0002 (id lists instead of rows, the `cacheable()` opt-in, the default TTL, the `Cache` module placement) still holds.
+
+## Context
+
+ADR 0002 invalidated cached id lists exactly: a reverse index from *(table, id)* to the cache keys holding that id, plus a per-table insert generation for new rows. It had three problems that further work on the same design could not fix.
+
+1. **Rows moving into a predicate are missed.** An `UPDATE` that makes a root row newly match a cached `WHERE` clause (e.g. `status` changes to `'active'`) has no reverse-index entry, because the id was never in the list. The list stays stale until TTL.
+2. **Dependency tables can't be covered.** A cached list holds only root ids. If the query joins `posts`, or filters through a `whereExists()` / `whereIn()` subquery on `posts`, nothing records which `posts` rows contributed. A new or changed `posts` row can also pull a root row *into* the result, and no index can predict that. Writes to `posts` never invalidated the list.
+3. **PSR-6 lost-update window.** PSR-6 has no atomic append. Concurrent writers to one reverse-index entry could drop a key, and needed a bounded retry loop, read-time cross-validation and a grace TTL to limit the damage. A residual race was still accepted.
+
+A related bug: a merged update (several sibling slices combined into one `UPDATE` with no single bound entity) skipped collection-cache invalidation entirely.
+
+## Decision
+
+Replace exact, row-level invalidation with one coarse, table-level mechanism: the **table generation**.
+
+- **One counter per table** (per connection namespace), stored in the second-level cache pool. A missing counter is seeded with a random value, never 0, so a dropped counter can't restart at a value old lists were keyed by.
+- **A cached list's key** is the existing components (namespace, entity class, compiled SQL, normalized parameters) plus `table:generation` for the **root table** and every **dependency table**, sorted and deduplicated. All generations are read in one batched `getItems()` call.
+- **Dependency tables** are detected by the query builder: every `join`/`leftJoin`/`rightJoin`/`crossJoin` target (alias stripped to the bare table name), and recursively the from/joins/subqueries of any `QueryBuilder` passed to `whereExists()`, `orWhereExists()` and `whereIn()`. The root table is the hydrated entity's table and appears once, so a self-join doesn't double-count.
+- **`cacheable(?int $ttl = null, array $dependsOn = [])`** lets the caller declare tables the builder can't see (`whereRaw()`, raw join conditions). They are table names, not entity classes, merged into the detected set.
+- **Flush** collects every table it wrote — inserts, entity updates, merged updates (via the merged update's table, which fixes the bug above), hard deletes, soft deletes, and mapping tables written by the unit of work — and bumps each one once, however many rows changed.
+- **Bump timing.** When `flush()` owns the transaction, the bump runs after `COMMIT`, so a concurrent reader can't cache pre-commit state under the new generation. Inside a caller-owned transaction it runs at the end of `flush()`; there is no commit hook to wait for. This is the same caveat class as the `#[Version]` in-memory bump in caller transactions.
+- **Fail-open.** Every pool operation is wrapped. If any generation can't be read, the call skips the cache (no read, no write): a list stored under an unknown generation could never be invalidated. A failed bump leaves pre-change lists matchable until TTL.
+- **Removed:** the reverse index, read-time cross-validation, the insert generation, the grace TTL and the retry loop. `CollectionCacheInterface` shrinks to get/set id list, batched generation read, and generation increment for a list of tables. A cache hit still discards the whole list and re-queries if any id can't be resolved through the identity map or the entity cache.
+
+Old-format entries simply stop matching and expire via TTL, so upgrading needs no manual cache flush.
+
+## Considered options
+
+- **Keep the reverse index and add dependency tracking** — rejected. The list holds only root ids, so there is nothing to index for joined rows, and rows entering a predicate are unpredictable either way. It would add a second mechanism on top of one that still had the lost-update window.
+- **Predicate- or row-level invalidation** (re-evaluate cached `WHERE` clauses against changed rows) — rejected. It requires an in-memory SQL evaluator, can't see raw SQL, and is far more complex than the benefit justifies.
+- **Coarse per-table generations** — chosen. It is correct for joins, subqueries and predicate moves, and simple: one counter type, one batched read, one bump per table per flush. This is the same trade-off Hibernate's query cache makes with its update-timestamps region.
+
+## Consequences
+
+- **Hit rate drops.** Any unit-of-work write to a table evicts every cached list that reads it, whether or not the changed row was in it. `cacheable()` pays off only for lists over read-mostly tables. Writes to tables a query doesn't read keep it a hit.
+- **Cross-context behavior changes.** Generations live in the shared pool, so a flush in one `EntityManager` invalidates lists every context reads. Per-entity cache eviction stays local to the writing manager.
+- **Out-of-scope writes are still invisible.** `QueryBuilder` DML and raw SQL don't bump generations. Tables reached only through raw SQL aren't detected unless declared with `dependsOn`.
+- **Caller-owned transactions keep a race window** between the end of `flush()` and the caller's `COMMIT`. Documented, not closed.
+- Cost per `cacheable()` query changes from one extra `getItem()` to one batched `getItems()` covering the root and dependency tables.
+- One invalidation mechanism to reason about. Nobody should reintroduce a reverse index without reading the context above.
+
+## See also
+
+- [Caching — Invalidation: table generations](/concepts/caching/#invalidation-table-generations) — user-facing contract.
+- [Known Limitations — Caching](/guides/known-limitations/#caching)
+- [ADR 0002](/reference/adr-0002-collection-second-level-cache/) — the superseded design.

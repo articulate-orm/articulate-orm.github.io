@@ -17,7 +17,7 @@ EntityManager → Schema → Attributes → Cache → Utils → Collection →
 Generators → Exceptions
 ```
 
-`Cache` (`src/Modules/Cache/`) holds the collection cache behind `QueryBuilder::cacheable()`. It sits below both `QueryBuilder` and `EntityManager` so both can reach it without `QueryBuilder` depending on `EntityManager` — see [ADR 0002](/reference/adr-0002-collection-second-level-cache/).
+`Cache` (`src/Modules/Cache/`) holds the collection cache behind `QueryBuilder::cacheable()`. It sits below both `QueryBuilder` and `EntityManager` so both can reach it without `QueryBuilder` depending on `EntityManager` — see [ADR 0002](/reference/adr-0002-collection-second-level-cache/) and [ADR 0003](/reference/adr-0003-collection-cache-table-generation-invalidation/).
 
 ```bash frame="terminal"
 composer architecture:check

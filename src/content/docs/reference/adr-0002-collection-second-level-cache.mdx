@@ -7,7 +7,11 @@ sidebar:
 
 import { Badge } from '@astrojs/starlight/components';
 
-<Badge text="Status: Accepted" variant="success" size="large" />
+<Badge text="Status: Superseded" variant="caution" size="large" />
+
+:::caution[Superseded]
+The invalidation design below (reverse index + per-table insert generation) is superseded by [ADR 0003: Collection Cache — Table-Generation Invalidation](/reference/adr-0003-collection-cache-table-generation-invalidation/). The cache shape (id lists, not rows), the `cacheable()` opt-in, the default TTL, the `Cache` module placement and the filter-state/`chunk()` notes still hold.
+:::
 
 ## Context
 
